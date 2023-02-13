@@ -3,9 +3,24 @@ import Sidebar from '../../components/sidebar/Sidebar';
 import Navbar from '../../components/navbar/Navbar';
 import { DriveFolderUploadOutlined } from '@mui/icons-material';
 import { useState } from 'react';
+import { setDoc, doc } from "firebase/firestore"; 
+import { auth, db } from '../../firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 const New = ({title, inputs}) => {
   const [file, setFile] = useState("");
+  const [data, setData] = useState({});
+
+  const handleInput = (e) => {
+    const id = e.target.id;
+    const value = e.target.value;
+    setData({...data, [id]: value});
+  }
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    const addedUser = await createUserWithEmailAndPassword(auth, data.email, data.password);
+    await setDoc(doc(db, "users", addedUser.user.uid), data);
+  }
 
   return (
     <div className='new'>
@@ -20,7 +35,7 @@ const New = ({title, inputs}) => {
             <img src={file ? URL.createObjectURL(file) : "https://picsum.photos/600/800" } alt="img" />
           </div>
           <div className="right">
-            <form>
+            <form onSubmit={handleAdd}>
               <div className="formInput">
                 <label htmlFor='file'>
                   Image: <DriveFolderUploadOutlined className='icon'/>
@@ -31,11 +46,11 @@ const New = ({title, inputs}) => {
                 return (
                   <div className="formInput" key={input.id}>
                     <label>{input.label}</label>
-                    <input type={input.type} placeholder={input.placeholder} />
+                    <input id={input.id} type={input.type} placeholder={input.placeholder} onChange={handleInput}/>
                   </div>
                 );
               })}
-              <button>Send</button>
+              <button type='submit'>Send</button>
             </form>
           </div>
         </div>
