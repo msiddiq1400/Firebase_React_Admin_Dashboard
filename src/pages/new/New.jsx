@@ -2,14 +2,53 @@ import './new.scss';
 import Sidebar from '../../components/sidebar/Sidebar';
 import Navbar from '../../components/navbar/Navbar';
 import { DriveFolderUploadOutlined } from '@mui/icons-material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { setDoc, doc } from "firebase/firestore"; 
-import { auth, db } from '../../firebase';
+import { auth, db, storage } from '../../firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { useNavigate } from 'react-router-dom';
 
 const New = ({title, inputs}) => {
   const [file, setFile] = useState("");
   const [data, setData] = useState({});
+  const [percentage, setPercentage] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const uploadFile = () => {
+      const fileName = new Date().getTime() +"_"+ file.name;
+      const storageRef = ref(storage, fileName);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log('Upload is ' + progress + '% done');
+          setPercentage(progress)
+          switch (snapshot.state) {
+            case 'paused':
+              console.log('Upload is paused');
+              break;
+            case 'running':
+              console.log('Upload is running');
+              break;
+            default:
+              break;
+          }
+        }, 
+        (error) => {
+          console.log(error);
+        }, 
+        () => {
+          getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+            setData((prev) => ({...prev, img: downloadURL}))
+          });
+        }
+      );
+    };
+    file && uploadFile();
+  }, [file])
 
   const handleInput = (e) => {
     const id = e.target.id;
@@ -18,8 +57,14 @@ const New = ({title, inputs}) => {
   }
   const handleAdd = async (e) => {
     e.preventDefault();
-    const addedUser = await createUserWithEmailAndPassword(auth, data.email, data.password);
-    await setDoc(doc(db, "users", addedUser.user.uid), data);
+    try {
+      //create user on firebase and save all the data in firestore
+      const addedUser = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      await setDoc(doc(db, "users", addedUser.user.uid), data);
+      navigate(-1);
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   return (
@@ -50,7 +95,12 @@ const New = ({title, inputs}) => {
                   </div>
                 );
               })}
-              <button type='submit'>Send</button>
+              <button 
+                disabled={percentage !== null && percentage < 100} 
+                type='submit'
+              >
+                Send
+              </button>
             </form>
           </div>
         </div>

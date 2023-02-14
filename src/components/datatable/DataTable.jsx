@@ -1,14 +1,60 @@
 import { Link } from 'react-router-dom';
-import { userColumns, userRows } from '../../datatablesource';
+import { userColumns } from '../../datatablesource';
 import './datatable.scss';
 import { DataGrid } from '@mui/x-data-grid';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { 
+  collection, 
+  // eslint-disable-next-line no-unused-vars
+  getDocs, 
+  doc, 
+  deleteDoc, 
+  onSnapshot 
+} from "firebase/firestore";
+import { db } from '../../firebase';
+
 
 const DataTable = () => {
-  const [data, setData] = useState(userRows);
+  const [data, setData] = useState([]);
 
-  const handleDelete = (rowId) => {
-    setData(data.filter(item => item.id !== rowId))
+  useEffect(() => {
+    // // REFRESH PAGE AND UPDATE STATE
+    // const fetchData = async () => {
+    //   let list = [];
+    //   try {
+    //     const querySnapshot = await getDocs(collection(db, "users"));
+    //     querySnapshot.forEach((doc) => {
+    //       list.push({id: doc.id, ...doc.data()});
+    //     });
+    //     setData(list)
+    //   } catch (error) {
+    //     console.log(error);
+    //   }
+    // };
+    // fetchData();
+
+    //REAL TIME UPDATE
+    const unsub = onSnapshot(collection(db, "users"), (snapshot) => {
+      let list = [];
+      snapshot.docs.forEach(doc => {
+        list.push({id: doc.id, ...doc.data()})
+        setData(list)
+      }, (error) => {
+        console.log(error)
+      });
+    });
+    return () => {
+      unsub();
+    }
+  }, [])
+
+  const handleDelete = async (rowId) => {
+    try {
+      await deleteDoc(doc(db, "users", rowId));
+      setData(data.filter(item => item.id !== rowId))
+    } catch (err) {
+      console.log(err)
+    }
   }
 
   const actionColums = [
