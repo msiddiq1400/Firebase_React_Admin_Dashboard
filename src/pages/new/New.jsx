@@ -3,7 +3,7 @@ import Sidebar from '../../components/sidebar/Sidebar';
 import Navbar from '../../components/navbar/Navbar';
 import { DriveFolderUploadOutlined } from '@mui/icons-material';
 import { useEffect, useState } from 'react';
-import { setDoc, doc } from "firebase/firestore"; 
+import { setDoc, doc, serverTimestamp } from "firebase/firestore"; 
 import { auth, db, storage } from '../../firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
@@ -60,7 +60,9 @@ const New = ({title, inputs}) => {
     try {
       //create user on firebase and save all the data in firestore
       const addedUser = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      await setDoc(doc(db, "users", addedUser.user.uid), data);
+      await setDoc(doc(db, "users", addedUser.user.uid), {
+        ...data, timestamp: serverTimestamp()
+      });
       navigate(-1);
     } catch (err) {
       console.log(err);
